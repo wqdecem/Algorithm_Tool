@@ -41,7 +41,7 @@ def load_images(*files):
 
 
 class Temp(pygame.sprite.Sprite):
-    speed = 10
+    speed = 2
     def __init__(self,color,initial_position):
         pygame.sprite.Sprite.__init__(self)
         self.image = pygame.Surface([30,30])
@@ -127,15 +127,17 @@ class TrajectoryInfo(object):
             delta_x = radius*math.sin(target_speed_x_radian)
             #计算y坐标相对顶点坐标的差
             delta_y = radius-radius*math.cos(target_speed_x_radian)
-            delta_axis.append([delta_x,delta_y])
-        line = []
-        for i in range(1,len(delta_axis)):
+        #    delta_axis.append([delta_x,delta_y])
+        #line = []
+        #for i in range(1,len(delta_axis)):
 
-            x = delta_axis[i][0]-delta_axis[i-1][0]
-            y = delta_axis[i][1]-delta_axis[i-1][1]
-            line.append([math.ceil(x),math.ceil(y)])
+        #    x = delta_axis[i][0]-delta_axis[i-1][0]
+        #    y = delta_axis[i][1]-delta_axis[i-1][1]
+        #    line.append([math.ceil(x),math.ceil(y)])
 
-        return line
+        #return line
+            delta_axis.append([math.ceil(delta_x+target.centerx),math.ceil(delta_y+target.top)])
+        return delta_axis
 
 class TransformTarget(object):
     """用于改变物体的大小"""
@@ -242,7 +244,7 @@ def main(winstyle = 0):
         left = int((screen.get_width()-w)/2)
         top = int((screen.get_height()-h)/2)
 
-        current_circle = pygame.draw.circle(screen,[255,0,0],[left+int(w/2),top+int(h/2)],int(w/2),1)
+        current_circle = pygame.draw.circle(screen,[255,0,0],[left+int(w/2),top+int(h/2)],int(h/2),1)
         box =Temp([0,255,0],[left+int(w/2)-15,current_circle.top-15])
         box_list_circle.append(box)
         my_rect_list_circle.append(current_circle)
@@ -317,15 +319,21 @@ def main(winstyle = 0):
         #绘制圆形轨迹
         circles = []
         for i in range(box_num):
+
+
             w =int( screen.get_width()/(i+1))
             h =int( screen.get_height()/(i+1))
+
             left = int((screen.get_width()-w)/2)
             top = int((screen.get_height()-h)/2)
-            circles.append(pygame.draw.circle(screen,[0,255,0],[left+int(w/2),top+int(h/2)],int(w/2),1))
+
+            circles.append(pygame.draw.circle(screen,[0,255,0],[left+int(w/2),top+int(h/2)],int(h/2),1))
         #按圆形轨迹移动矩形框
         for i in range(box_num):
             current_step = traj_info_list_circle[i][speed_count % len(traj_info_list_circle[i])]
-            box_list_circle[i].move_retangle(current_step)
+            x = current_step[0]-box_list_circle[i].rect.left
+            y = current_step[1]-box_list_circle[i].rect.top
+            box_list_circle[i].move_retangle([x,y])
 
             box_list_circle[i].rect.clamp_ip(circles[i])#周期性调整，令其始终在圆内
             screen.blit(box_list_circle[i].image,box_list_circle[i].rect)
@@ -335,7 +343,7 @@ def main(winstyle = 0):
         pygame.display.update()
         pygame.display.flip()
         #cap the framerate 
-        clock.tick(25) #50 frames per second.
+        clock.tick(50) #50 frames per second.
         speed_count+=1
 
     pygame.time.wait(1)
