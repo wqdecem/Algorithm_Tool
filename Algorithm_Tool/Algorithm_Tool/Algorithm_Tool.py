@@ -13,13 +13,6 @@ if not pygame.image.get_extended():
 
 
 #game constants
-
-ALIEN_ODDS     = 22     #chances a new alien appears
-
-ALIEN_RELOAD   = 12     #frames between new aliens
-
-SCORE          = 0
-
 main_dir = os.path.split(os.path.abspath(__file__))[0]
 
 def load_image(file):
@@ -36,12 +29,6 @@ def load_images(*files):
     for file in files:
         imgs.append(load_image(file))
     return imgs
-
-
-class dummysound:
-    def play(self): pass
-
-
 
 
 # each type of game object gets an init and an
@@ -110,9 +97,11 @@ class MouseInfo(pygame.sprite.Sprite):
         self.image = self.font.render(msg, 0, self.color)
 
 class TrajectoryInfo(object):
+    """用于记录轨迹的信息"""
     def __init__(self):
         pass
     def retangle_trajectory(self,target,speed):
+        """记录矩形轨迹信息，speed为步进，从top left开始，顺时针记录，如需反向，则逆向使用序列"""
         line = []
         for i in range(target.left,target.right,speed):
             line.append([speed,0])
@@ -122,20 +111,46 @@ class TrajectoryInfo(object):
             line.append([-speed,0])
         for i in range(target.top,target.bottom,speed):
             line.append([0,-speed])
-        print(line)
+
+        return line
+
+
+    def circle_trajectory(self,target,speed):
+        """记录圆形轨迹信息，speed为步进，从top left开始，顺时针记录，如需反向，则逆向使用序列"""
+        radius = (target.right - target.left) / 2
+        delta_axis = []
+        for i in range(int(2*math.pi*radius/speed)):
+            target_speed_angle = float(360 * speed * i/ (2 * math.pi * radius))
+            #转为弧度
+            target_speed_x_radian =math.radians(target_speed_angle)
+            #计算x坐标相对顶点坐标的差
+            delta_x = radius*math.sin(target_speed_x_radian)
+            #计算y坐标相对顶点坐标的差
+            delta_y = radius-radius*math.cos(target_speed_x_radian)
+            delta_axis.append([delta_x,delta_y])
+        line = []
+        for i in range(1,len(delta_axis)):
+
+            x = delta_axis[i][0]-delta_axis[i-1][0]
+            y = delta_axis[i][1]-delta_axis[i-1][1]
+            line.append([math.ceil(x),math.ceil(y)])
+
         return line
 
 class TransformTarget(object):
-
+    """用于改变物体的大小"""
     def __init__(self):
         pass
 
     def transform_size(self,target,grow_rate):
+        """用于改变物体的大小，输入image对象，然后变形"""
         if grow_rate>1:
             target = pygame.transform.smoothscale(target, (math.ceil(target.get_width()*grow_rate), math.ceil(target.get_height()*grow_rate)))
         else:
             target = pygame.transform.smoothscale(target, (math.floor(target.get_width()*grow_rate), math.floor(target.get_height()*grow_rate)))
         return target
+
+
 
 def main(winstyle = 0):
     # Initialize pygame
@@ -209,16 +224,32 @@ def main(winstyle = 0):
     for i in range(box_num):
         w =int( screen.get_width()/(i+1))
         h =int( screen.get_height()/(i+1))
-        top = int((screen.get_width()-w)/2)
-        left = int((screen.get_height()-h)/2)
-        box =Temp([255,0,0],[top-15,left-15])
+        left = int((screen.get_width()-w)/2)
+        top = int((screen.get_height()-h)/2)
+        box =Temp([255,0,0],[left-15,top-15])
         box_list.append(box)
-        my_rect_list.append(pygame.Rect(top,left,w,h))
-
-
+        my_rect_list.append(pygame.Rect(left,top,w,h))
     traj_info_list = []
     for each in my_rect_list:
         traj_info_list.append(traj_info.retangle_trajectory(each,speed))
+
+    #生成圆形轨迹组
+    my_rect_list_circle =[]
+    box_list_circle = []
+    for i in range(box_num):
+        w =int( screen.get_width()/(i+1))
+        h =int( screen.get_height()/(i+1))
+        left = int((screen.get_width()-w)/2)
+        top = int((screen.get_height()-h)/2)
+
+        current_circle = pygame.draw.circle(screen,[255,0,0],[left+int(w/2),top+int(h/2)],int(w/2),1)
+        box =Temp([0,255,0],[left+int(w/2)-15,current_circle.top-15])
+        box_list_circle.append(box)
+        my_rect_list_circle.append(current_circle)
+    traj_info_list_circle = []
+    for each in my_rect_list_circle:
+        traj_info_list_circle.append(traj_info.circle_trajectory(each,speed))
+
     speed_count = 0
     while True:
         for event in pygame.event.get():
@@ -270,15 +301,37 @@ def main(winstyle = 0):
         #    for k in temp:
         #        i.update(k.rect.left,k.rect.top)
         #        screen.blit(i.image,i.rect)
+
+        #按矩形轨迹移动矩形框
         for i in range(box_num):
             current_step = traj_info_list[i][speed_count % len(traj_info_list[i])]
             box_list[i].move_retangle(current_step)
             screen.blit(box_list[i].image,box_list[i].rect)
 
+        #绘制矩形轨迹
         for each in my_rect_list:
             print(each)
             pygame.draw.rect(screen,[255,0,0],each,1)
+
+
+        #绘制圆形轨迹
+        circles = []
+        for i in range(box_num):
+            w =int( screen.get_width()/(i+1))
+            h =int( screen.get_height()/(i+1))
+            left = int((screen.get_width()-w)/2)
+            top = int((screen.get_height()-h)/2)
+            circles.append(pygame.draw.circle(screen,[0,255,0],[left+int(w/2),top+int(h/2)],int(w/2),1))
+        #按圆形轨迹移动矩形框
+        for i in range(box_num):
+            current_step = traj_info_list_circle[i][speed_count % len(traj_info_list_circle[i])]
+            box_list_circle[i].move_retangle(current_step)
+
+            box_list_circle[i].rect.clamp_ip(circles[i])#周期性调整，令其始终在圆内
+            screen.blit(box_list_circle[i].image,box_list_circle[i].rect)
+
         #pygame.draw.aaline(screen, (0, 0, 255), (100, 250), (540, 300), 1)
+        #current_circle = pygame.draw.circle(screen,[255,0,0],[100,100],100,1)
         pygame.display.update()
         pygame.display.flip()
         #cap the framerate 
