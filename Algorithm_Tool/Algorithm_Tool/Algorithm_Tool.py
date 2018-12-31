@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 import random, os.path
 import math
+import numpy
 #import basic pygame modules
 import pygame
 from pygame.locals import *
@@ -79,6 +80,9 @@ class Temp(pygame.sprite.Sprite):
             self.direction = self.right
         self.rect.move_ip(self.speed*self.direction, 0)
 
+    def move_retangle(self,axis=None):
+        self.rect.move_ip(axis[0],axis[1])
+
     def update_size(self,color,new_size):
         current_position = self.rect.topleft
         pygame.sprite.Sprite.__init__(self)
@@ -105,6 +109,22 @@ class MouseInfo(pygame.sprite.Sprite):
         msg = "pos: %s,%s" % (x,y)
         self.image = self.font.render(msg, 0, self.color)
 
+class TrajectoryInfo(object):
+    def __init__(self):
+        pass
+    def retangle_trajectory(self,target,speed):
+        line = []
+        for i in range(target.left,target.right,speed):
+            line.append([speed,0])
+        for i in range(target.top,target.bottom,speed):
+            line.append([0,speed])
+        for i in range(target.left,target.right,speed):
+            line.append([-speed,0])
+        for i in range(target.top,target.bottom,speed):
+            line.append([0,-speed])
+        print(line)
+        return line
+
 class TransformTarget(object):
 
     def __init__(self):
@@ -122,7 +142,7 @@ def main(winstyle = 0):
     
 
     pygame.init()
-
+    box_num = 4
 
     # Set the display mode
     #winstyle = 0  # |FULLSCREEN
@@ -154,9 +174,11 @@ def main(winstyle = 0):
 
     pygame.display.flip()
 
+    
     # Initialize Game Groups
 
     temp = pygame.sprite.Group()
+    boxs = pygame.sprite.Group()
     text = pygame.sprite.Group()
     all = pygame.sprite.RenderUpdates()
     lastalien = pygame.sprite.GroupSingle()
@@ -171,13 +193,33 @@ def main(winstyle = 0):
     #initialize our starting sprites
 
     tf = TransformTarget()
-
+    traj_info = TrajectoryInfo()
     text.add(MouseInfo())
 
     speed = 10
-    b=Temp([255,0,0],[50,100])
-    temp.add(b)
+    b=Temp([255,0,0],[0,0])
 
+    #生成矩形组
+
+
+
+    #生成矩形轨迹组
+    my_rect_list =[]
+    box_list = []
+    for i in range(box_num):
+        w =int( screen.get_width()/(i+1))
+        h =int( screen.get_height()/(i+1))
+        top = int((screen.get_width()-w)/2)
+        left = int((screen.get_height()-h)/2)
+        box =Temp([255,0,0],[top-15,left-15])
+        box_list.append(box)
+        my_rect_list.append(pygame.Rect(top,left,w,h))
+
+
+    traj_info_list = []
+    for each in my_rect_list:
+        traj_info_list.append(traj_info.retangle_trajectory(each,speed))
+    speed_count = 0
     while True:
         for event in pygame.event.get():
             if event.type == VIDEORESIZE:
@@ -220,21 +262,28 @@ def main(winstyle = 0):
                 i.image = pygame.transform.smoothscale(i.image, (100, 100))
 
             #i.image = tf.transform_size(i.image,1.01)
-            i.update(speed,SCREENRECT)
+            #i.update(speed,SCREENRECT)
+            #screen.blit(i.image,i.rect)
 
 
-            screen.blit(i.image,i.rect)
+        #for i in text:
+        #    for k in temp:
+        #        i.update(k.rect.left,k.rect.top)
+        #        screen.blit(i.image,i.rect)
+        for i in range(box_num):
+            current_step = traj_info_list[i][speed_count % len(traj_info_list[i])]
+            box_list[i].move_retangle(current_step)
+            screen.blit(box_list[i].image,box_list[i].rect)
 
-
-        for i in text:
-            for k in temp:
-                i.update(k.rect.left,k.rect.top)
-                screen.blit(i.image,i.rect)
+        for each in my_rect_list:
+            print(each)
+            pygame.draw.rect(screen,[255,0,0],each,1)
+        #pygame.draw.aaline(screen, (0, 0, 255), (100, 250), (540, 300), 1)
         pygame.display.update()
         pygame.display.flip()
         #cap the framerate 
         clock.tick(25) #50 frames per second.
-
+        speed_count+=1
 
     pygame.time.wait(1)
     pygame.quit()
