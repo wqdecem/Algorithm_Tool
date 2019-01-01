@@ -2,7 +2,8 @@
 # -*- coding: utf-8 -*-
 import random, os.path
 import math
-import numpy
+import numpy as np
+import matplotlib.pyplot as plt
 #import basic pygame modules
 import pygame
 from pygame.locals import *
@@ -70,6 +71,10 @@ class Temp(pygame.sprite.Sprite):
     def move_retangle(self,axis=None):
         self.rect.move_ip(axis[0],axis[1])
 
+    def move_vertor(self,taget_axis,current_axis):
+        vertor = np.array(taget_axis)-np.array(current_axis)
+        self.rect.move_ip(vertor[0],vertor[1])
+
     def update_size(self,color,new_size):
         current_position = self.rect.topleft
         pygame.sprite.Sprite.__init__(self)
@@ -115,29 +120,18 @@ class TrajectoryInfo(object):
         return line
 
 
-    def circle_trajectory(self,target,speed):
-        """记录圆形轨迹信息，speed为步进，从top left开始，顺时针记录，如需反向，则逆向使用序列"""
-        radius = (target.right - target.left) / 2
-        delta_axis = []
-        for i in range(int(2*math.pi*radius/speed)):
-            target_speed_angle = float(360 * speed * i/ (2 * math.pi * radius))
-            #转为弧度
-            target_speed_x_radian =math.radians(target_speed_angle)
-            #计算x坐标相对顶点坐标的差
-            delta_x = radius*math.sin(target_speed_x_radian)
-            #计算y坐标相对顶点坐标的差
-            delta_y = radius-radius*math.cos(target_speed_x_radian)
-        #    delta_axis.append([delta_x,delta_y])
-        #line = []
-        #for i in range(1,len(delta_axis)):
+    def circle_trajectory(self,target,angle_speed):
+        """用参数法实现圆形轨迹"""
+        radias = target.centerx - target.left
+        #转换为弧度
+        angle_speed = math.radians(angle_speed)
 
-        #    x = delta_axis[i][0]-delta_axis[i-1][0]
-        #    y = delta_axis[i][1]-delta_axis[i-1][1]
-        #    line.append([math.ceil(x),math.ceil(y)])
+        theta = np.arange(0, 2*np.pi, angle_speed)
+        x = float(target.centerx) + radias * np.cos(theta)
+        y = float(target.centery) + radias * np.sin(theta)
 
-        #return line
-            delta_axis.append([math.ceil(delta_x+target.centerx),math.ceil(delta_y+target.top)])
-        return delta_axis
+        return list(zip(x,y))
+
 
 class TransformTarget(object):
     """用于改变物体的大小"""
@@ -250,7 +244,7 @@ def main(winstyle = 0):
         my_rect_list_circle.append(current_circle)
     traj_info_list_circle = []
     for each in my_rect_list_circle:
-        traj_info_list_circle.append(traj_info.circle_trajectory(each,speed))
+        traj_info_list_circle.append(traj_info.circle_trajectory(each, angle_speed=speed/10))
 
     speed_count = 0
     while True:
@@ -331,11 +325,11 @@ def main(winstyle = 0):
         #按圆形轨迹移动矩形框
         for i in range(box_num):
             current_step = traj_info_list_circle[i][speed_count % len(traj_info_list_circle[i])]
-            x = current_step[0]-box_list_circle[i].rect.left
-            y = current_step[1]-box_list_circle[i].rect.top
-            box_list_circle[i].move_retangle([x,y])
 
-            box_list_circle[i].rect.clamp_ip(circles[i])#周期性调整，令其始终在圆内
+            box_list_circle[i].move_vertor([int(current_step[0]),int(current_step[1])],
+                                           [box_list_circle[i].rect.centerx,box_list_circle[i].rect.centery])
+
+            #box_list_circle[i].rect.clamp_ip(circles[i])#周期性调整，令其始终在圆内
             screen.blit(box_list_circle[i].image,box_list_circle[i].rect)
 
         #pygame.draw.aaline(screen, (0, 0, 255), (100, 250), (540, 300), 1)
