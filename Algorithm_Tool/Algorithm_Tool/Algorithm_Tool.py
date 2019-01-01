@@ -108,15 +108,23 @@ class TrajectoryInfo(object):
     def retangle_trajectory(self,target,speed):
         """记录矩形轨迹信息，speed为步进，从top left开始，顺时针记录，如需反向，则逆向使用序列"""
         line = []
-        for i in range(target.left,target.right,speed):
-            line.append([speed,0])
-        for i in range(target.top,target.bottom,speed):
-            line.append([0,speed])
-        for i in range(target.left,target.right,speed):
-            line.append([-speed,0])
-        for i in range(target.top,target.bottom,speed):
-            line.append([0,-speed])
 
+        #计算矩形上边
+        top_x = np.arange(target.left,target.right,speed)
+        top_y = np.ones(len(top_x)) * target.top
+        line += list(zip(top_x,top_y))
+        #计算矩形右边坐标
+        right_y = np.arange(target.top,target.bottom,speed)
+        right_x = np.ones(len(right_y)) * target.right
+        line += list(zip(right_x,right_y))
+        #计算矩形下边坐标
+        bottom_x = top_x[::-1]
+        bottom_y = np.ones(len(bottom_x)) * target.bottom
+        line += list(zip(bottom_x,bottom_y))
+        #计算矩形左边坐标
+        left_y = right_y[::-1]
+        left_x = np.ones(len(left_y)) * target.left
+        line += list(zip(left_x,left_y))
         return line
 
 
@@ -129,6 +137,16 @@ class TrajectoryInfo(object):
         theta = np.arange(0, 2*np.pi, angle_speed)
         x = float(target.centerx) + radias * np.cos(theta)
         y = float(target.centery) + radias * np.sin(theta)
+
+        return list(zip(x,y))
+
+    def triangle_trajectory(self,scope,bias,amplitude,speed):
+        """用参数法实现三角函数轨迹"""
+
+        x = np.arange(scope[0],scope[1],speed/10)
+        #转换为弧度
+        angle_speed = np.radians(x)
+        y = bias + amplitude * np.sin(angle_speed)
 
         return list(zip(x,y))
 
@@ -229,6 +247,25 @@ def main(winstyle = 0):
     for each in my_rect_list:
         traj_info_list.append(traj_info.retangle_trajectory(each,speed))
 
+    #生成三角轨迹组
+    my_rect_list_triangle =[]
+    box_list_triangle = []
+    traj_info_list_triangle = []
+    for i in range(box_num):
+        w =int( screen.get_width()/(i+1))
+        h =int( screen.get_height()/(i+1))
+        left = int((screen.get_width()-w)/2)
+        top = int((screen.get_height()-h)/2)
+        box =Temp([255,0,0],[left-15,top-15])
+        box_list_triangle.append(box)
+        my_rect_list_triangle.append(pygame.Rect(left,top,w,h))
+    
+
+        traj_info_list_triangle.append(traj_info.triangle_trajectory(scope=[left,left+w],
+                                                                     bias=int(top+h/2),
+                                                                     amplitude=h/2,
+                                                                     speed=speed))
+
     #生成圆形轨迹组
     my_rect_list_circle =[]
     box_list_circle = []
@@ -301,7 +338,16 @@ def main(winstyle = 0):
         #按矩形轨迹移动矩形框
         for i in range(box_num):
             current_step = traj_info_list[i][speed_count % len(traj_info_list[i])]
-            box_list[i].move_retangle(current_step)
+            #box_list[i].move_retangle(current_step)
+            box_list[i].move_vertor([int(current_step[0]),int(current_step[1])],
+                                           [box_list[i].rect.centerx,box_list[i].rect.centery])
+
+            #周期性变化颜色和大小
+            box_list[i].update_size([int(255*abs((np.sin(math.radians(speed_count))))),
+                                     int(255*abs((np.sin(math.radians(speed_count))))),
+                                     int(255*abs((np.cos(math.radians(speed_count)))))],
+                                    [int(50+40*(np.sin(math.radians(speed_count)))),
+                                     int(50+40*(np.sin(math.radians(speed_count))))])
             screen.blit(box_list[i].image,box_list[i].rect)
 
         #绘制矩形轨迹
@@ -309,6 +355,20 @@ def main(winstyle = 0):
             print(each)
             pygame.draw.rect(screen,[255,0,0],each,1)
 
+        #按三角函数轨迹移动矩形框
+        for i in range(box_num):
+            current_step = traj_info_list_triangle[i][speed_count % len(traj_info_list_triangle[i])]
+
+            box_list_triangle[i].move_vertor([int(current_step[0]),int(current_step[1])],
+                                           [box_list_triangle[i].rect.centerx,box_list_triangle[i].rect.centery])
+
+            screen.blit(box_list_triangle[i].image,box_list_triangle[i].rect)
+
+        #绘制三角函数轨迹
+        for i in range(box_num):
+            for each in traj_info_list_triangle[i]:
+                pygame.draw.rect(screen,[255,0,0],[each[0],each[1],1,1],3)
+                #screen.blit(box_list_triangle[i].image,box_list_triangle[i].rect)
 
         #绘制圆形轨迹
         circles = []
@@ -331,6 +391,7 @@ def main(winstyle = 0):
 
             #box_list_circle[i].rect.clamp_ip(circles[i])#周期性调整，令其始终在圆内
             screen.blit(box_list_circle[i].image,box_list_circle[i].rect)
+
 
         #pygame.draw.aaline(screen, (0, 0, 255), (100, 250), (540, 300), 1)
         #current_circle = pygame.draw.circle(screen,[255,0,0],[100,100],100,1)
