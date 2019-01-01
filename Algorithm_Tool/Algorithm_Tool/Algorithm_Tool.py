@@ -241,6 +241,7 @@ def main(winstyle = 0):
         left = int((screen.get_width()-w)/2)
         top = int((screen.get_height()-h)/2)
         box =Temp([255,0,0],[left-15,top-15])
+        
         box_list.append(box)
         my_rect_list.append(pygame.Rect(left,top,w,h))
     traj_info_list = []
@@ -277,6 +278,7 @@ def main(winstyle = 0):
 
         current_circle = pygame.draw.circle(screen,[255,0,0],[left+int(w/2),top+int(h/2)],int(h/2),1)
         box =Temp([0,255,0],[left+int(w/2)-15,current_circle.top-15])
+        box.image = load_image('test%s.png' % str(i+1))
         box_list_circle.append(box)
         my_rect_list_circle.append(current_circle)
     traj_info_list_circle = []
